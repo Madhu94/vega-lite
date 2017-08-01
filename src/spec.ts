@@ -8,6 +8,7 @@ import {Facet} from './facet';
 import {Field, FieldDef} from './fielddef';
 import * as log from './log';
 import {AnyMark, AREA, isPrimitiveMark, LINE, Mark, MarkDef} from './mark';
+import {Projection} from './projection';
 import {Repeat} from './repeat';
 import {ResolveMapping} from './resolve';
 import {SelectionDef} from './selection';
@@ -86,7 +87,7 @@ export interface GenericUnitSpec<E extends Encoding<any>, M> extends BaseSpec, L
 
   /**
    * A string describing the mark type (one of `"bar"`, `"circle"`, `"square"`, `"tick"`, `"line"`,
-   * `"area"`, `"point"`, `"rule"`, and `"text"`) or a [mark definition object](mark.html#mark-def).
+   * `"area"`, `"point"`, `"rule"`, `"geoshape"`, and `"text"`) or a [mark definition object](mark.html#mark-def).
    */
   mark: M;
 
@@ -94,6 +95,11 @@ export interface GenericUnitSpec<E extends Encoding<any>, M> extends BaseSpec, L
    * A key-value mapping between encoding channels and definition of fields.
    */
   encoding: E;
+
+  /**
+   * A geo projection
+   */
+  projection?: Projection;
 
   /**
    * A key-value mapping between selection names and definitions.
