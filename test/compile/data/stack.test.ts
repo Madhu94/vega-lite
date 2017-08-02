@@ -28,7 +28,8 @@ describe('compile/data/stack', () => {
     });
 
     assert.deepEqual<StackComponent>(parse(model), {
-      groupby: ['b'],
+      dimensionFieldDef: {field: 'b', type: 'nominal'},
+      facetby: [],
       field: 'sum_a',
       stackby: ['c'],
       sort: {
@@ -51,7 +52,8 @@ describe('compile/data/stack', () => {
     });
 
     assert.deepEqual<StackComponent>(parse(model), {
-      groupby: ["bin_maxbins_10_b_start", "bin_maxbins_10_b_end"],
+      dimensionFieldDef: {"bin": {maxbins: 10}, "field": "b", "type": "quantitative"},
+      facetby: [],
       field: 'sum_a',
       stackby: ['c'],
       sort: {
@@ -73,7 +75,8 @@ describe('compile/data/stack', () => {
     });
 
     assert.deepEqual<StackComponent>(parse(model), {
-      groupby: [],
+      dimensionFieldDef: undefined,
+      facetby: [],
       field: 'sum_a',
       stackby: ['c'],
       sort: {
@@ -110,7 +113,8 @@ describe('compile/data/stack', () => {
     });
 
     assert.deepEqual<StackComponent>(parse(model), {
-      groupby: ['b'],
+      dimensionFieldDef: {field: 'b', type: 'nominal'},
+      facetby: [],
       field: 'sum_a',
       stackby: ['c'],
       sort: {
