@@ -2,9 +2,9 @@ import {isString} from 'vega-util';
 import {AggregateOp} from '../aggregate';
 import {Channel, COLUMN, NonspatialScaleChannel, ROW, ScaleChannel} from '../channel';
 import {Config} from '../config';
-import {reduce} from '../encoding';
+import {channelHasField, reduce} from '../encoding';
 import {Facet} from '../facet';
-import {FieldDef, normalize, title as fieldDefTitle} from '../fielddef';
+import {field, FieldDef, normalize, title as fieldDefTitle} from '../fielddef';
 import * as log from '../log';
 import {FILL_STROKE_CONFIG} from '../mark';
 import {ResolveMapping} from '../resolve';
@@ -244,11 +244,7 @@ export class FacetModel extends ModelWithField {
   }
 
   public assembleLayout(): VgLayout {
-    const columns = this.channelHasField('column') ? {
-      signal: this.columnDistinctSignal()
-    } : 1;
-
-
+    const columns = (this.channelHasField('column') && this.columnDistinctSignal()) || 1;
 
     // TODO: determine default align based on shared / independent scales
 
@@ -271,10 +267,29 @@ export class FacetModel extends ModelWithField {
   }
 
   private columnDistinctSignal() {
-    // In facetNode.assemble(), the name is always this.getName('column') + '_layout'.
-    const facetLayoutDataName = this.getName('column') + '_layout';
-    const columnDistinct = this.field('column',  {prefix: 'distinct'});
-    return `data('${facetLayoutDataName}')[0][${stringValue(columnDistinct)}]`;
+    if (this.parent && (this.parent instanceof FacetModel)) {
+      // For nested facet, we will add columns to group mark instead
+      // See discussion in https://github.com/vega/vega/issues/952
+      // and https://github.com/vega/vega-view/releases/tag/v1.2.6
+      return undefined;
+    } else {
+      // In facetNode.assemble(), the name is always this.getName('column') + '_layout'.
+      const facetLayoutDataName = this.getName('column') + '_layout';
+      const columnDistinct = this.field('column',  {prefix: 'distinct'});
+      return {signal: `data('${facetLayoutDataName}')[0][${stringValue(columnDistinct)}]`};
+    }
+  }
+
+  public assembleGroup(signals: VgSignal[]) {
+    if (this.parent && (this.parent instanceof FacetModel)) {
+      // See discussion in https://github.com/vega/vega/issues/952
+      // and https://github.com/vega/vega-view/releases/tag/v1.2.6
+      return {
+        columns: field(this.facet.column, {binSuffix: 'start', expr: 'datum', prefix: 'distinct'}),
+        ...super.assembleGroup(signals)
+      };
+    }
+    return super.assembleGroup(signals);
   }
 
   /**
@@ -283,19 +298,26 @@ export class FacetModel extends ModelWithField {
   private getCardinalityAggregateForChild() {
     const fields: string[] = [];
     const ops: AggregateOp[] = [];
-    for (const channel of ['x', 'y'] as ScaleChannel[]) {
-      const childScaleComponent = this.child.component.scales[channel];
-      if (childScaleComponent && !childScaleComponent.merged) {
-        const type = childScaleComponent.get('type');
-        const range = childScaleComponent.get('range');
+    if (this.child instanceof FacetModel) {
+      if (this.child.channelHasField('column')) {
+        fields.push(field(this.child.facet.column));
+        ops.push('distinct');
+      }
+    } else {
+      for (const channel of ['x', 'y'] as ScaleChannel[]) {
+        const childScaleComponent = this.child.component.scales[channel];
+        if (childScaleComponent && !childScaleComponent.merged) {
+          const type = childScaleComponent.get('type');
+          const range = childScaleComponent.get('range');
 
-        if (hasDiscreteDomain(type) && isVgRangeStep(range)) {
-          const field = getFieldFromDomains(childScaleComponent.domains);
-          if (field) {
-            fields.push(field);
-            ops.push('distinct');
-          } else {
-            throw new Error('We do not yet support calculation of size for faceted union domain.');
+          if (hasDiscreteDomain(type) && isVgRangeStep(range)) {
+            const field = getFieldFromDomains(childScaleComponent.domains);
+            if (field) {
+              fields.push(field);
+              ops.push('distinct');
+            } else {
+              throw new Error('We do not yet support calculation of size for faceted union domain.');
+            }
           }
         }
       }
